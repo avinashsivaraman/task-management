@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Param, Delete, Patch, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Patch, Query, UsePipes, ValidationPipe, Res, HttpStatus } from '@nestjs/common';
 import { TaskService } from './task.service';
 import { CreateTaskDTO } from './dto/create-task.dto';
 import { FilterTaskDTO } from './dto/filter-task-dto';
 import { TaskStatusValidatePipe } from './pipes/update-task.pipes';
+import { TaskStatus } from './task.model'
+import * as uuid from 'uuid/v1';
 
 @Controller('task')
 export class TaskController {
@@ -10,12 +12,12 @@ export class TaskController {
 
   @Get()
   @UsePipes(ValidationPipe)
-  getTasks(@Query() filterTaskDTO: FilterTaskDTO) {
+  async getTasks(@Query() filterTaskDTO: FilterTaskDTO) {
     if (Object.keys(filterTaskDTO).length) {
       const { search, status } = filterTaskDTO
       return this.taskService.getTaskFromFiltering(status, search)
     } else {
-      return this.taskService.getAllTasks()
+      return await this.taskService.getAllTasks()
     }
   }
 
@@ -26,8 +28,18 @@ export class TaskController {
 
   @Post()
   @UsePipes(ValidationPipe)
-  createTask(@Body() {title, description} : CreateTaskDTO ) {
-    return this.taskService.createTasks(title, description)
+  async createTask(@Res() res, @Body('title') title: string,  @Body('description') description: string ) {
+    const createTaskDTO: CreateTaskDTO = {
+      title,
+      description,
+      id: uuid(),
+      status: TaskStatus.OPEN
+    }
+    const addTask = await this.taskService.createTasks(createTaskDTO)
+    return res.status(HttpStatus.OK).json({
+      message: 'Task has been added',
+      task: addTask
+    })
   }
 
   @Delete('/:id')
